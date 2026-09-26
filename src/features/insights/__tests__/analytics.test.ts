@@ -328,27 +328,26 @@ function buildContext(monthKey: string, now: Date, limit: number): InsightContex
 }
 
 describe('generateDeterministicInsights', () => {
-  it('produces 3–5 prioritized, data-backed observations', () => {
+  it('produces at most 3 prioritized, data-backed observations', () => {
     const insights = generateDeterministicInsights(buildContext('2026-09', NOW, 5));
-    expect(insights.length).toBeGreaterThanOrEqual(3);
-    expect(insights.length).toBeLessThanOrEqual(5);
+    expect(insights.length).toBeGreaterThanOrEqual(1);
+    expect(insights.length).toBeLessThanOrEqual(3);
 
     // Highest-priority slot is the (partial-month) pace comparison.
-    expect(insights[0].text).toMatch(/at this point last month/);
+    expect(insights[0].text).toMatch(/vs this point last month/);
     // The largest category increase is surfaced (Travel, +$500, a new category).
-    expect(insights.some((i) => /\$500\.00 more on Travel/.test(i.text))).toBe(true);
-    // Budget line present.
-    expect(insights.some((i) => i.id === 'budget')).toBe(true);
-    // Every insight is non-empty.
-    for (const i of insights) expect(i.text.length).toBeGreaterThan(0);
+    expect(insights.some((i) => /Travel \+\$500 month over month/.test(i.text))).toBe(true);
+    // Every insight is non-empty and concise (single short line).
+    for (const i of insights) {
+      expect(i.text.length).toBeGreaterThan(0);
+      expect(i.text.length).toBeLessThanOrEqual(60);
+    }
   });
 
-  it('uses same-day pace copy for the current month, not partial-vs-full', () => {
+  it('uses compact same-day pace copy for the current month', () => {
     const insights = generateDeterministicInsights(buildContext('2026-09', NOW, 5));
     const pace = insights.find((i) => i.id === 'pace');
-    expect(pace?.text).toBe(
-      'Your spending is $512.00 higher than it was at this point last month.'
-    );
+    expect(pace?.text).toBe('+$512 vs this point last month');
   });
 
   it('suppresses trivial differences below the threshold', () => {
@@ -380,11 +379,31 @@ describe('generateDeterministicInsights', () => {
     expect(insights.some((i) => i.id === 'category-increase')).toBe(false);
   });
 
-  it('reports an over-budget status when applicable', () => {
-    const monthSpend = computeMonthlySpend(transactions, '2026-09');
-    const ctx = buildContext('2026-09', NOW, 5);
-    ctx.budget = computeBudgetStatus(1000, monthSpend); // 1723 spent → over
+  it('reports a concise over-budget status when applicable', () => {
+    // A single-month scenario (no previous month → no pace/category movers) so the
+    // budget line is among the top 3 surfaced.
+    const now = new Date('2026-09-15T12:00:00');
+    const single = [
+      tx('a', '2026-09-02T10:00:00', 800, 'Shopping'),
+      tx('b', '2026-09-05T10:00:00', 400, 'Shopping'),
+    ];
+    const monthSpend = computeMonthlySpend(single, '2026-09');
+    const ctx: InsightContext = {
+      monthKey: '2026-09',
+      now,
+      currency: 'USD',
+      monthName: 'September',
+      comparison: computeMonthComparison(single, '2026-09'),
+      pace: computeSpendingPace(single, '2026-09', now),
+      categoryTotals: computeCategoryTotals(single, '2026-09'),
+      categoryComparison: computeCategoryComparison(single, '2026-09'),
+      largest: getLargestTransactions(single, '2026-09', 5),
+      weekend: computeWeekendSpending(single, '2026-09'),
+      budget: computeBudgetStatus(1000, monthSpend), // 1200 spent → over by 200
+      monthSpend,
+      transactionCount: 2,
+    };
     const insights = generateDeterministicInsights(ctx);
-    expect(insights.some((i) => /over your September budget/.test(i.text))).toBe(true);
+    expect(insights.find((i) => i.id === 'budget')?.text).toBe('Over budget: $200.00');
   });
 });

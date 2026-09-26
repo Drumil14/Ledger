@@ -76,6 +76,23 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   return formatter.format(amount);
 }
 
+// Whole-dollar formatters (no cents) for compact, scannable deltas like "+$269".
+const compactCurrencyFormatters = new Map<string, Intl.NumberFormat>();
+
+/** Compact currency without cents (e.g. 269.43 → "$269"). For tight delta copy. */
+export function formatCurrencyCompact(amount: number, currency = 'USD'): string {
+  let formatter = compactCurrencyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    });
+    compactCurrencyFormatters.set(currency, formatter);
+  }
+  return formatter.format(amount);
+}
+
 /** Spoken amount for screen readers, e.g. 22.99 → "22 dollars and 99 cents"; 49 → "49 dollars". */
 export function describeAmount(amount: number): string {
   const cents = amountToCents(Math.abs(amount));

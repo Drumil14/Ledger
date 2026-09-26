@@ -15,7 +15,13 @@
  * already-verified numbers, but it must never produce them.
  */
 
-import { amountToCents, centsToAmount, formatCurrency, sumAmounts } from '@/lib/money';
+import {
+  amountToCents,
+  centsToAmount,
+  formatCurrency,
+  formatCurrencyCompact,
+  sumAmounts,
+} from '@/lib/money';
 import {
   daysInMonth,
   isCurrentMonth,
@@ -419,7 +425,8 @@ const CATEGORY_CHANGE_MIN_CENTS = 2500; // $25
 const LARGE_PURCHASE_MIN_CENTS = 5000; // $50 floor for an "unusually large" call
 const WEEKEND_SHARE_MIN = 35; // % — above the ~29% a flat 2-of-7 weekend would give
 
-const MAX_INSIGHTS = 5;
+// Kept intentionally short so "Worth noticing" stays scannable, not a paragraph.
+const MAX_INSIGHTS = 3;
 
 type Candidate = { priority: number; id: string; text: string };
 
@@ -449,7 +456,6 @@ export type InsightContext = {
 export function generateDeterministicInsights(ctx: InsightContext): Insight[] {
   const {
     currency,
-    monthName,
     comparison,
     pace,
     categoryTotals,
@@ -462,9 +468,9 @@ export function generateDeterministicInsights(ctx: InsightContext): Insight[] {
   } = ctx;
 
   const isCurrent = pace.isPartial;
+  // Full precision for absolute figures; whole dollars for compact deltas.
   const money = (amount: number) => formatCurrency(amount, currency);
-  const thisMonthPhrase = isCurrent ? 'this month' : `in ${monthName}`;
-  const prevPhrase = isCurrent ? 'last month' : 'the previous month';
+  const compact = (amount: number) => formatCurrencyCompact(amount, currency);
 
   const candidates: Candidate[] = [];
 
@@ -473,21 +479,21 @@ export function generateDeterministicInsights(ctx: InsightContext): Insight[] {
   if (isCurrent) {
     const diffCents = amountToCents(pace.differenceAmount);
     if (pace.previousSpendToSameDay > 0 && Math.abs(diffCents) >= MONTH_CHANGE_MIN_CENTS) {
-      const word = pace.direction === 'up' ? 'higher' : 'lower';
+      const sign = pace.direction === 'up' ? '+' : '−';
       candidates.push({
         priority: 10,
         id: 'pace',
-        text: `Your spending is ${money(Math.abs(pace.differenceAmount))} ${word} than it was at this point last month.`,
+        text: `${sign}${compact(Math.abs(pace.differenceAmount))} vs this point last month`,
       });
     }
   } else if (comparison.previousHadSpending) {
     const diffCents = amountToCents(comparison.differenceAmount);
     if (Math.abs(diffCents) >= MONTH_CHANGE_MIN_CENTS) {
-      const word = comparison.direction === 'up' ? 'more' : 'less';
+      const sign = comparison.direction === 'up' ? '+' : '−';
       candidates.push({
         priority: 10,
         id: 'month-change',
-        text: `You spent ${money(Math.abs(comparison.differenceAmount))} ${word} in ${monthName} than the previous month.`,
+        text: `${sign}${compact(Math.abs(comparison.differenceAmount))} vs the previous month`,
       });
     }
   }
@@ -500,18 +506,17 @@ export function generateDeterministicInsights(ctx: InsightContext): Insight[] {
     candidates.push({
       priority: 20,
       id: 'category-increase',
-      text: `You spent ${money(topIncrease.differenceAmount)} more on ${topIncrease.category} than ${prevPhrase}.`,
+      text: `${topIncrease.category} +${compact(topIncrease.differenceAmount)} month over month`,
     });
   }
 
   // 3. Largest category this month.
   const topCategory = categoryTotals[0];
   if (topCategory) {
-    const verb = isCurrent ? 'is' : 'was';
     candidates.push({
       priority: 25,
       id: 'top-category',
-      text: `${topCategory.category} ${verb} your largest category ${thisMonthPhrase} at ${money(topCategory.total)}.`,
+      text: `Largest category: ${topCategory.category} (${money(topCategory.total)})`,
     });
   }
 
@@ -521,13 +526,13 @@ export function generateDeterministicInsights(ctx: InsightContext): Insight[] {
       candidates.push({
         priority: 30,
         id: 'budget',
-        text: `You're ${money(budget.overAmount)} over your ${monthName} budget.`,
+        text: `Over budget: ${money(budget.overAmount)}`,
       });
     } else if (budget.remaining !== null) {
       candidates.push({
         priority: 30,
         id: 'budget',
-        text: `You have ${money(budget.remaining)} remaining in your ${monthName} budget.`,
+        text: `Budget remaining: ${money(budget.remaining)}`,
       });
     }
   }
@@ -541,7 +546,7 @@ export function generateDeterministicInsights(ctx: InsightContext): Insight[] {
       candidates.push({
         priority: 50,
         id: 'large-purchase',
-        text: `Your largest purchase ${thisMonthPhrase} was ${money(top.amount)} at ${top.merchant}.`,
+        text: `Largest purchase: ${top.merchant} (${money(top.amount)})`,
       });
     }
   }
@@ -551,7 +556,7 @@ export function generateDeterministicInsights(ctx: InsightContext): Insight[] {
     candidates.push({
       priority: 60,
       id: 'weekend',
-      text: `Weekend spending represents ${weekend.weekendShare}% of your spending ${thisMonthPhrase}.`,
+      text: `Weekends: ${weekend.weekendShare}% of spending`,
     });
   }
 

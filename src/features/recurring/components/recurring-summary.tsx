@@ -36,23 +36,13 @@ export function RecurringSummary({ now, onOpen }: Props) {
           <View style={styles.totalBlock}>
             <View style={styles.row}>
               <Text variant="body" color={colors.textSecondary}>
-                Monthly recurring
+                Confirmed monthly recurring
               </Text>
               <MoneyText amount={data.monthlyTotal} currency={data.currency} />
             </View>
             <Text variant="metadata" color={colors.textSecondary}>
               Estimated yearly {formatMoney(data.annualEstimate, data.currency)}
             </Text>
-          </View>
-        ) : null}
-
-        {data.insights.length > 0 ? (
-          <View style={styles.insightList}>
-            {data.insights.map((insight) => (
-              <Text key={insight.id} variant="body" style={styles.insight}>
-                {insight.text}
-              </Text>
-            ))}
           </View>
         ) : null}
 
@@ -83,12 +73,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
-  },
-  insightList: {
-    gap: spacing.sm,
-  },
-  insight: {
-    lineHeight: 24,
   },
   candidateRow: {
     gap: spacing.sm,

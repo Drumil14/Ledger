@@ -14,6 +14,7 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { colors, duration } from '@/constants/theme';
+import { DeviceFrame } from '@/components/device-frame';
 import { AuthProvider } from '@/features/auth/auth-context';
 import { DemoProvider } from '@/features/demo/demo-context';
 import { NotificationRouter } from '@/features/notifications/notification-router';
@@ -48,18 +49,21 @@ export default function RootLayout() {
           <AuthProvider>
             <DemoProvider>
               <StatusBar style="dark" />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: colors.background },
-                  animation: 'fade',
-                  animationDuration: duration.slow,
-                }}
-              >
-                <Stack.Screen name="index" />
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(app)" />
-              </Stack>
+              <DeviceFrame>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
+                    animation: 'fade',
+                    animationDuration: duration.slow,
+                  }}
+                >
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="demo" />
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(app)" />
+                </Stack>
+              </DeviceFrame>
               <NotificationRouter />
             </DemoProvider>
           </AuthProvider>

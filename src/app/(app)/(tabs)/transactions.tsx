@@ -153,7 +153,7 @@ export default function Transactions() {
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
   },
   searchRow: {
     flexDirection: 'row',

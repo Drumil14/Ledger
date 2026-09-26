@@ -423,23 +423,23 @@ function paceSummary(data: InsightsData, prevMonthName: string): string {
 const styles = StyleSheet.create({
   headerPad: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
   },
   header: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
-    gap: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.lg,
   },
   content: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.xl,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxxl,
   },
   sections: {
-    gap: spacing.xl,
+    gap: spacing.xxl,
   },
   recurring: {
-    marginTop: spacing.xl,
+    marginTop: spacing.xxl,
   },
   monthEmpty: {
     paddingVertical: spacing.xxl,
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   section: {
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   chartWrap: {
     marginTop: spacing.md,

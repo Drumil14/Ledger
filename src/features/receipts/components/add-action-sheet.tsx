@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Images, PencilLine, Sparkles, type LucideIcon } from 'lucide-react-native';
 
@@ -86,20 +86,26 @@ export function AddActionSheet({ visible, onClose }: Props) {
   return (
     <BottomSheet visible={visible} onClose={onClose} title="Add expense">
       <View>
-        <Option
-          Icon={Camera}
-          title="Scan receipt"
-          subtitle="Use the camera to capture a receipt"
-          onPress={scan}
-        />
-        <Divider />
-        <Option
-          Icon={Images}
-          title="Choose photo"
-          subtitle="Import an existing receipt"
-          onPress={() => void choosePhoto()}
-        />
-        <Divider />
+        {/* Camera / photo import can't work in the web recruiter demo, so hide
+            them there; native keeps the full set unchanged. */}
+        {Platform.OS !== 'web' ? (
+          <>
+            <Option
+              Icon={Camera}
+              title="Scan receipt"
+              subtitle="Use the camera to capture a receipt"
+              onPress={scan}
+            />
+            <Divider />
+            <Option
+              Icon={Images}
+              title="Choose photo"
+              subtitle="Import an existing receipt"
+              onPress={() => void choosePhoto()}
+            />
+            <Divider />
+          </>
+        ) : null}
         <Option
           Icon={PencilLine}
           title="Enter manually"

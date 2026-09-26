@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -34,6 +34,11 @@ type Props = {
  */
 export function DayExpensesSheet({ summary, currency, onClose, onSelectTransaction }: Props) {
   const reduceMotion = useReducedMotion();
+  const { height } = useWindowDimensions();
+  // Cap the whole sheet body so a busy day never overflows the screen; the list
+  // scrolls inside this bound while the header stays put. The sheet panel itself
+  // adds the home-indicator inset, so the list only needs a small bottom pad.
+  const bodyMaxHeight = Math.round(height * 0.72);
 
   // Keep rendering the last summary through the close animation so the panel never
   // flashes empty as it slides down (mirrors BottomSheet's delayed-unmount).
@@ -71,7 +76,8 @@ export function DayExpensesSheet({ summary, currency, onClose, onSelectTransacti
       title={shown ? titleFormatter.format(shown.date) : ''}
     >
       {shown ? (
-        <>
+        <View style={{ maxHeight: bodyMaxHeight }}>
+          {/* Fixed header — always visible while the list below scrolls. */}
           <View style={styles.header}>
             <MoneyText amount={shown.total} currency={currency} variant="display" />
             <Text variant="metadata" color={colors.textSecondary}>
@@ -90,11 +96,12 @@ export function DayExpensesSheet({ summary, currency, onClose, onSelectTransacti
                 renderItem={renderItem}
                 ItemSeparatorComponent={Divider}
                 style={styles.list}
+                contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
               />
             </>
           ) : null}
-        </>
+        </View>
       ) : null}
     </BottomSheet>
   );
@@ -105,7 +112,11 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginBottom: spacing.md,
   },
+  // Fills the remaining space within the capped body and scrolls internally.
   list: {
-    maxHeight: 360,
+    flexShrink: 1,
+  },
+  listContent: {
+    paddingBottom: spacing.md,
   },
 });
