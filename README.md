@@ -110,6 +110,9 @@ npm test               # jest  (211 tests)
      `unique(user_id, month)`).
    - `0004_recurring_expenses.sql` — `recurring_expenses` table (RLS, unique per
      user + normalized merchant + frequency).
+   - `0005_secure_receipt_ai_usage.sql` — revokes client `EXECUTE` on the
+     `increment_receipt_ai_usage` RPC so only the Edge Function (service role)
+     can touch the rate-limit counter.
 5. Restart the dev server after editing `.env` (`EXPO_PUBLIC_*` vars are inlined at
    bundle time).
 
@@ -132,6 +135,8 @@ is ever in the client bundle.
    `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are
    injected automatically. JWT verification is on by default, and the function
    also re‑derives the user from the session and enforces a per‑user daily cap.
+   The cap **fails closed**: if the usage counter can't be read the function
+   returns `503` rather than falling through to a billable AI call.
 3. Without deployment the app still works — scanning fails gracefully with a
    retry / “Enter manually” path, manual entry never needs the network, and
    **demo mode’s “Try sample receipt” needs no function at all**.
