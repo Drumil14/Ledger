@@ -4,7 +4,7 @@ import { computeBudgetStatus, sumSpendingForMonth } from '@/features/budgets/sum
 import { detectRecurring, normalizeMerchant } from '@/features/recurring/detection';
 import { currentMonthKey, monthKeyFromDate, monthKeyFromStored, previousMonthKey } from '@/lib/month';
 
-import { DEMO_BUDGET_LIMIT, generateDemoDataset } from '../demo-data';
+import { DEMO_BALANCE_CENTS, DEMO_BUDGET_LIMIT, generateDemoDataset } from '../demo-data';
 
 // A fixed reference date so the deterministic assertions never depend on "now".
 const REF = new Date(2026, 5, 26, 12, 0, 0); // 26 Jun 2026 — late enough to include all current-month items.
@@ -115,6 +115,28 @@ describe('generateDemoDataset', () => {
       expect(r.expectedAmount).not.toBeNull();
       expect(r.nextExpectedDate).toBeTruthy();
     }
+  });
+
+  it('seeds active income sources with positive cents and a consistent currency', () => {
+    expect(dataset.income.length).toBeGreaterThanOrEqual(1);
+    const kinds = dataset.income.map((i) => i.schedule.kind);
+    expect(kinds).toEqual(expect.arrayContaining(['biweekly', 'monthly']));
+    for (const i of dataset.income) {
+      expect(i.active).toBe(true);
+      expect(i.amountCents).toBeGreaterThan(0);
+      expect(i.currency).toBe('USD');
+    }
+  });
+
+  it('seeds one explicitly declared balance snapshot dated on the reference day', () => {
+    expect(dataset.balances).toHaveLength(1);
+    const [snapshot] = dataset.balances;
+    expect(snapshot.amountCents).toBe(DEMO_BALANCE_CENTS);
+    expect(snapshot.currency).toBe('USD');
+    // Dated TODAY (not month-start) so the forecast engine accepts it as a
+    // current declared balance — it never rolls an older snapshot forward.
+    expect(snapshot.effectiveDate).toBe('2026-06-26');
+    expect(monthKeyFromStored(snapshot.effectiveDate)).toBe(currentKey);
   });
 
   it('leaves Adobe undecided so the detector surfaces it as a live candidate', () => {

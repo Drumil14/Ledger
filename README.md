@@ -214,7 +214,7 @@ Ledger's backend is built around user-level isolation.
 - Anthropic key exists only inside the Edge Function environment
 - Edge Function validates the authenticated user
 - receipt payloads are validated before processing
-- per-user AI usage is rate-limited
+- per-user AI usage is rate-limited, and the limit **fails closed** — if the usage counter can't be read the function returns `503` rather than falling through to a billable AI call
 - AI output is schema-validated before reaching the client
 
 ### Session storage
@@ -444,7 +444,7 @@ Demo Mode does not require this function and instead uses a deterministic bundle
 
 ## Database
 
-Ledger currently uses four primary migrations:
+Ledger currently uses these migrations:
 
 | Migration | Purpose |
 | --- | --- |
@@ -452,6 +452,7 @@ Ledger currently uses four primary migrations:
 | `0002_receipts.sql` | Receipt metadata, private storage, AI usage limits |
 | `0003_budgets.sql` | Monthly user budgets |
 | `0004_recurring_expenses.sql` | Confirmed / ignored recurring patterns |
+| `0005_secure_receipt_ai_usage.sql` | Restricts the AI usage-counter RPC to the Edge Function's service role |
 
 Every user-owned table is protected with Row Level Security.
 

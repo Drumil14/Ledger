@@ -15,6 +15,12 @@ type Props = {
   value: Date;
   onChange: (date: Date) => void;
   error?: string;
+  /** Field label. Defaults to "Date". */
+  label?: string;
+  /** Latest selectable date. Defaults to today (expenses can't be in the future). */
+  maximumDate?: Date;
+  /** Earliest selectable date. */
+  minimumDate?: Date;
 };
 
 const mediumFormatter = new Intl.DateTimeFormat('en-US', {
@@ -37,9 +43,9 @@ function formatDateLabel(date: Date): string {
 }
 
 /** Date field backed by the native picker (dialog on Android, inline on iOS). */
-export function DateField({ value, onChange, error }: Props) {
+export function DateField({ value, onChange, error, label = 'Date', maximumDate, minimumDate }: Props) {
   const [open, setOpen] = useState(false);
-  const maximumDate = new Date();
+  const max = maximumDate ?? new Date();
 
   const onNative = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') {
@@ -56,7 +62,7 @@ export function DateField({ value, onChange, error }: Props) {
   return (
     <>
       <FieldButton
-        label="Date"
+        label={label}
         value={formatDateLabel(value)}
         onPress={() => setOpen(true)}
         error={error}
@@ -64,16 +70,23 @@ export function DateField({ value, onChange, error }: Props) {
       />
 
       {Platform.OS === 'android' && open ? (
-        <DateTimePicker value={value} mode="date" maximumDate={maximumDate} onChange={onNative} />
+        <DateTimePicker
+          value={value}
+          mode="date"
+          maximumDate={max}
+          minimumDate={minimumDate}
+          onChange={onNative}
+        />
       ) : null}
 
       {Platform.OS === 'ios' ? (
-        <BottomSheet visible={open} onClose={() => setOpen(false)} title="Date">
+        <BottomSheet visible={open} onClose={() => setOpen(false)} title={label}>
           <DateTimePicker
             value={value}
             mode="date"
             display="inline"
-            maximumDate={maximumDate}
+            maximumDate={max}
+            minimumDate={minimumDate}
             onChange={onNative}
             themeVariant="light"
             accentColor={colors.primary}

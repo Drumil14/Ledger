@@ -29,6 +29,11 @@ export default function Profile() {
 
   const [resetConfirming, setResetConfirming] = useState(false);
 
+  const openForecast = () => {
+    haptics.light();
+    router.push('/forecast');
+  };
+
   const openRecurring = () => {
     haptics.light();
     router.push('/recurring');
@@ -98,6 +103,17 @@ export default function Profile() {
         <Text variant="metadata" color={colors.disabled} style={styles.sectionLabel}>
           MANAGE
         </Text>
+        <Divider />
+        <Pressable
+          onPress={openForecast}
+          accessibilityRole="button"
+          accessibilityLabel="Cash-flow forecast"
+        >
+          <View style={styles.row}>
+            <Text variant="body">Cash-flow forecast</Text>
+            <ChevronRight size={20} color={colors.textSecondary} strokeWidth={2} />
+          </View>
+        </Pressable>
         <Divider />
         <Pressable
           onPress={openRecurring}

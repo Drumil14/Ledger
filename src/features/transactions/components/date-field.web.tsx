@@ -20,6 +20,12 @@ type Props = {
   value: Date;
   onChange: (date: Date) => void;
   error?: string;
+  /** Field label. Defaults to "Date". */
+  label?: string;
+  /** Latest selectable date. Defaults to today. */
+  maximumDate?: Date;
+  /** Earliest selectable date. */
+  minimumDate?: Date;
 };
 
 const mediumFormatter = new Intl.DateTimeFormat('en-US', {
@@ -69,11 +75,11 @@ const inputStyle: CSSProperties = {
   cursor: 'pointer',
 };
 
-export function DateField({ value, onChange, error }: Props) {
+export function DateField({ value, onChange, error, label = 'Date', maximumDate, minimumDate }: Props) {
   return (
     <View style={styles.container}>
       <FieldButton
-        label="Date"
+        label={label}
         value={formatDateLabel(value)}
         onPress={() => {}}
         error={error}
@@ -81,9 +87,10 @@ export function DateField({ value, onChange, error }: Props) {
       />
       <input
         type="date"
-        aria-label="Date"
+        aria-label={label}
         value={toInputValue(value)}
-        max={toInputValue(new Date())}
+        max={toInputValue(maximumDate ?? new Date())}
+        min={minimumDate ? toInputValue(minimumDate) : undefined}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
           const next = parseInputValue(e.target.value);
           if (next) onChange(next);

@@ -30,6 +30,10 @@ export default function AppLayout() {
         <Stack.Screen name="add-expense" options={{ presentation: 'modal' }} />
         <Stack.Screen name="budget" options={{ presentation: 'modal' }} />
         <Stack.Screen name="recurring" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="forecast" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="income" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="income-edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="balance" options={{ presentation: 'modal' }} />
         <Stack.Screen name="notifications" options={{ presentation: 'modal' }} />
         <Stack.Screen name="transaction/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="scan-receipt" options={{ presentation: 'fullScreenModal' }} />

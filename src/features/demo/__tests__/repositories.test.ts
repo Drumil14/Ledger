@@ -1,10 +1,12 @@
 /// <reference types="jest" />
+import * as balancesService from '@/services/balances';
 import * as budgetsService from '@/services/budgets';
+import * as incomeService from '@/services/income';
 import * as recurringService from '@/services/recurring';
 import * as transactionsService from '@/services/transactions';
 
 import { activateDemo, deactivateDemo } from '../demo-runtime';
-import { budgetsRepo, recurringRepo, transactionsRepo } from '../repositories';
+import { balancesRepo, budgetsRepo, incomeRepo, recurringRepo, transactionsRepo } from '../repositories';
 
 // Mock every real service so we can prove demo mode NEVER calls Supabase-backed
 // code, and real mode always does. (`jest.mock` is hoisted above the imports.)
@@ -25,6 +27,17 @@ jest.mock('@/services/recurring', () => ({
   confirmRecurring: jest.fn().mockResolvedValue({ id: 'real' }),
   ignoreRecurring: jest.fn().mockResolvedValue({ id: 'real' }),
   deleteRecurring: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('@/services/income', () => ({
+  fetchIncomeSources: jest.fn().mockResolvedValue([]),
+  createIncomeSource: jest.fn().mockResolvedValue({ id: 'real' }),
+  updateIncomeSource: jest.fn().mockResolvedValue({ id: 'real' }),
+  deleteIncomeSource: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('@/services/balances', () => ({
+  fetchBalanceSnapshots: jest.fn().mockResolvedValue([]),
+  upsertBalanceSnapshot: jest.fn().mockResolvedValue({ id: 'real' }),
+  deleteBalanceSnapshot: jest.fn().mockResolvedValue(undefined),
 }));
 
 const REF = new Date(2026, 5, 26, 12, 0, 0);
@@ -74,6 +87,33 @@ describe('repository selection', () => {
       expect(recurringService.fetchRecurringExpenses).not.toHaveBeenCalled();
       expect(recurringService.confirmRecurring).not.toHaveBeenCalled();
     });
+
+    it('serves income and balances from the store, never Supabase', async () => {
+      const seededIncome = await incomeRepo.fetch();
+      expect(seededIncome.length).toBeGreaterThan(0); // demo income is seeded
+      await incomeRepo.create({
+        name: 'Side gig',
+        amountCents: 50000,
+        frequency: 'monthly',
+        startDate: '2026-06-01',
+        dayOfMonth: 1,
+      });
+      await incomeRepo.update({ id: seededIncome[0].id, active: false });
+      await incomeRepo.remove(seededIncome[0].id);
+
+      const seededBalances = await balancesRepo.fetch();
+      expect(seededBalances.length).toBeGreaterThan(0); // demo balance is seeded
+      await balancesRepo.upsert({ amountCents: 100000, effectiveDate: '2026-06-01' });
+      await balancesRepo.remove(seededBalances[0].id);
+
+      expect(incomeService.fetchIncomeSources).not.toHaveBeenCalled();
+      expect(incomeService.createIncomeSource).not.toHaveBeenCalled();
+      expect(incomeService.updateIncomeSource).not.toHaveBeenCalled();
+      expect(incomeService.deleteIncomeSource).not.toHaveBeenCalled();
+      expect(balancesService.fetchBalanceSnapshots).not.toHaveBeenCalled();
+      expect(balancesService.upsertBalanceSnapshot).not.toHaveBeenCalled();
+      expect(balancesService.deleteBalanceSnapshot).not.toHaveBeenCalled();
+    });
   });
 
   describe('when demo mode is inactive (real user)', () => {
@@ -87,6 +127,13 @@ describe('repository selection', () => {
       await recurringRepo.fetch();
       expect(budgetsService.fetchBudget).toHaveBeenCalledTimes(1);
       expect(recurringService.fetchRecurringExpenses).toHaveBeenCalledTimes(1);
+    });
+
+    it('routes income and balances to the real service', async () => {
+      await incomeRepo.fetch();
+      await balancesRepo.fetch();
+      expect(incomeService.fetchIncomeSources).toHaveBeenCalledTimes(1);
+      expect(balancesService.fetchBalanceSnapshots).toHaveBeenCalledTimes(1);
     });
   });
 });
