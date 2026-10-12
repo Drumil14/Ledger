@@ -1,0 +1,54 @@
+# Maestro E2E — critical forecasting journey.
+#
+# STATUS: NOT YET EXECUTED. This environment has no iOS simulator (Windows host)
+# and no Android emulator (adb unavailable), so this flow is a ready-to-run
+# scaffold rather than a verified pass. Run it with a device/emulator attached:
+#
+#   maestro test .maestro/forecast-journey.yaml
+#
+# It uses semantic text / accessibility-label selectors (no coordinates, no
+# screenshot diffs) and the deterministic Demo dataset — no backend, no auth, no
+# billable AI calls — so it is stable and reproducible.
+appId: com.drumilmistry.ledger
+---
+- launchApp:
+    clearState: true
+- tapOn: "Explore demo"
+- assertVisible: "Spent this month" # Home, demo data loaded
+
+# View the forecast
+- tapOn: "Profile"
+- tapOn: "Cash-flow forecast"
+- assertVisible: "EXPECTED NET CASH FLOW"
+
+# Add income
+- tapOn: "Manage income"
+- assertVisible: "Income"
+- tapOn: "Add income"
+- tapOn: "Amount in dollars"
+- inputText: "1500"
+- tapOn: "Name"
+- inputText: "Signing bonus"
+- tapOn: "Add income" # submit
+- assertVisible: "Signing bonus" # now listed
+
+# Enter a balance
+- back
+- tapOn: "Update balance"
+- assertVisible: "Balance"
+- tapOn: "Amount in dollars"
+- inputText: "5000"
+- tapOn: "Save balance"
+- assertVisible: "EXPECTED NET CASH FLOW" # back on the forecast
+
+# Modify income (deactivate) and confirm the forecast stays coherent
+- tapOn: "Manage income"
+- tapOn: "Signing bonus active" # the Toggle's accessibility label
+- back
+- assertVisible: "EXPECTED NET CASH FLOW"
+
+# Reset the demo
+- tapOn: "Profile"
+- tapOn: "Reset demo data"
+- tapOn: "Reset"
+- assertVisible: "Demo"
