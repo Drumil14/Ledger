@@ -124,4 +124,57 @@ describe('DemoStore', () => {
     const bTxs = await b.fetchTransactions();
     expect(bTxs.find((t) => t.id === first.id)).toBeDefined();
   });
+
+  it('seeds income and a declared balance', async () => {
+    const store = new DemoStore(REF);
+    expect((await store.fetchIncomeSources()).length).toBeGreaterThan(0);
+    expect((await store.fetchBalanceSnapshots()).length).toBeGreaterThan(0);
+  });
+
+  it('creates, updates (re-deriving schedule), and deletes an income source', async () => {
+    const store = new DemoStore(REF);
+    const before = (await store.fetchIncomeSources()).length;
+
+    const created = await store.createIncomeSource({
+      name: 'Side gig',
+      amountCents: 50000,
+      frequency: 'monthly',
+      startDate: '2026-06-01',
+      dayOfMonth: 15,
+    });
+    expect(created.schedule).toEqual({ kind: 'monthly', dayOfMonth: 15 });
+    expect((await store.fetchIncomeSources())).toHaveLength(before + 1);
+
+    const updated = await store.updateIncomeSource({ id: created.id, dayOfMonth: 28, active: false });
+    expect(updated.schedule).toEqual({ kind: 'monthly', dayOfMonth: 28 });
+    expect(updated.active).toBe(false);
+
+    await store.deleteIncomeSource(created.id);
+    expect((await store.fetchIncomeSources()).find((i) => i.id === created.id)).toBeUndefined();
+  });
+
+  it('upserts a balance snapshot per effective date and deletes by id', async () => {
+    const store = new DemoStore(REF);
+    const first = await store.upsertBalanceSnapshot({ amountCents: 123456, effectiveDate: '2026-06-15' });
+    const again = await store.upsertBalanceSnapshot({ amountCents: 222222, effectiveDate: '2026-06-15' });
+    expect(again.id).toBe(first.id); // same date → replace, not duplicate
+    expect(again.amountCents).toBe(222222);
+
+    await store.deleteBalanceSnapshot(first.id);
+    expect((await store.fetchBalanceSnapshots()).find((b) => b.id === first.id)).toBeUndefined();
+  });
+
+  it('reset() restores original income and balances after mutations', async () => {
+    const store = new DemoStore(REF);
+    const originalIncome = (await store.fetchIncomeSources()).length;
+    const originalBalances = (await store.fetchBalanceSnapshots()).length;
+
+    await store.createIncomeSource({ name: 'Temp', amountCents: 1, frequency: 'weekly', startDate: '2026-06-01' });
+    await store.upsertBalanceSnapshot({ amountCents: 1, effectiveDate: '2026-06-20' });
+
+    store.reset();
+    expect(await store.fetchIncomeSources()).toHaveLength(originalIncome);
+    expect(await store.fetchBalanceSnapshots()).toHaveLength(originalBalances);
+    expect((await store.fetchIncomeSources()).find((i) => i.name === 'Temp')).toBeUndefined();
+  });
 });

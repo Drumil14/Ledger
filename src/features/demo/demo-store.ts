@@ -18,16 +18,37 @@ import type {
   UpdateTransactionInput,
 } from '@/services/transactions';
 import type { UpsertBudgetInput } from '@/services/budgets';
+import type { CreateIncomeInput, UpdateIncomeInput } from '@/services/income';
+import type { UpsertBalanceInput } from '@/services/balances';
 import type { UpsertRecurringInput } from '@/services/recurring';
+import type { BalanceSnapshot, IncomeSchedule, IncomeSource } from '@/types/income';
 import type { RecurringExpense, RecurringStatus } from '@/types/recurring';
 import type { Budget, Transaction } from '@/types/transaction';
 
 import { generateDemoDataset } from './demo-data';
 
+/** Rebuild an engine schedule from the flat create-input fields (mirrors the service). */
+function scheduleFromInput(input: CreateIncomeInput): IncomeSchedule {
+  switch (input.frequency) {
+    case 'weekly':
+      return { kind: 'weekly', anchorDate: input.startDate };
+    case 'biweekly':
+      return { kind: 'biweekly', anchorDate: input.startDate };
+    case 'monthly':
+      return { kind: 'monthly', dayOfMonth: input.dayOfMonth ?? 1 };
+    case 'one-time':
+      return { kind: 'one-time', date: input.startDate };
+    case 'custom':
+      return { kind: 'custom', dates: input.customDates ?? [] };
+  }
+}
+
 export class DemoStore {
   private transactions: Transaction[] = [];
   private budgets: Budget[] = [];
   private recurring: RecurringExpense[] = [];
+  private income: IncomeSource[] = [];
+  private balances: BalanceSnapshot[] = [];
   private seq = 0;
 
   constructor(private readonly referenceDate: Date = new Date()) {
@@ -40,6 +61,8 @@ export class DemoStore {
     this.transactions = data.transactions.map((t) => ({ ...t }));
     this.budgets = data.budgets.map((b) => ({ ...b }));
     this.recurring = data.recurring.map((r) => ({ ...r }));
+    this.income = data.income.map((i) => ({ ...i }));
+    this.balances = data.balances.map((b) => ({ ...b }));
     this.seq = 0;
   }
 
@@ -177,5 +200,91 @@ export class DemoStore {
     };
     this.recurring.push(record);
     return { ...record };
+  }
+
+  /* ------------------------------- Income -------------------------------- */
+
+  async fetchIncomeSources(): Promise<IncomeSource[]> {
+    return this.income.map((i) => ({ ...i }));
+  }
+
+  async createIncomeSource(input: CreateIncomeInput): Promise<IncomeSource> {
+    const record: IncomeSource = {
+      id: this.nextId('income'),
+      name: input.name,
+      amountCents: input.amountCents,
+      currency: input.currency ?? 'USD',
+      schedule: scheduleFromInput(input),
+      startDate: input.startDate,
+      endDate: input.endDate ?? null,
+      active: input.active ?? true,
+    };
+    this.income.push(record);
+    return { ...record };
+  }
+
+  async updateIncomeSource(input: UpdateIncomeInput): Promise<IncomeSource> {
+    const existing = this.income.find((i) => i.id === input.id);
+    if (!existing) throw new Error('Income source not found');
+
+    if (input.name !== undefined) existing.name = input.name;
+    if (input.amountCents !== undefined) existing.amountCents = input.amountCents;
+    if (input.currency !== undefined) existing.currency = input.currency;
+    if (input.startDate !== undefined) existing.startDate = input.startDate;
+    if (input.endDate !== undefined) existing.endDate = input.endDate ?? null;
+    if (input.active !== undefined) existing.active = input.active;
+    // Re-derive the schedule when any schedule-affecting field changed.
+    if (
+      input.frequency !== undefined ||
+      input.startDate !== undefined ||
+      input.dayOfMonth !== undefined ||
+      input.customDates !== undefined
+    ) {
+      existing.schedule = scheduleFromInput({
+        name: existing.name,
+        amountCents: existing.amountCents,
+        frequency: input.frequency ?? existing.schedule.kind,
+        startDate: existing.startDate,
+        dayOfMonth:
+          input.dayOfMonth ??
+          (existing.schedule.kind === 'monthly' ? existing.schedule.dayOfMonth : null),
+        customDates:
+          input.customDates ?? (existing.schedule.kind === 'custom' ? existing.schedule.dates : null),
+      });
+    }
+    return { ...existing };
+  }
+
+  async deleteIncomeSource(id: string): Promise<void> {
+    this.income = this.income.filter((i) => i.id !== id);
+  }
+
+  /* ------------------------------ Balances ------------------------------- */
+
+  async fetchBalanceSnapshots(): Promise<BalanceSnapshot[]> {
+    return this.balances
+      .slice()
+      .sort((a, b) => (a.effectiveDate < b.effectiveDate ? 1 : -1));
+  }
+
+  async upsertBalanceSnapshot(input: UpsertBalanceInput): Promise<BalanceSnapshot> {
+    const existing = this.balances.find((b) => b.effectiveDate === input.effectiveDate);
+    if (existing) {
+      existing.amountCents = input.amountCents;
+      existing.currency = input.currency ?? existing.currency;
+      return { ...existing };
+    }
+    const record: BalanceSnapshot = {
+      id: this.nextId('balance'),
+      amountCents: input.amountCents,
+      currency: input.currency ?? 'USD',
+      effectiveDate: input.effectiveDate,
+    };
+    this.balances.push(record);
+    return { ...record };
+  }
+
+  async deleteBalanceSnapshot(id: string): Promise<void> {
+    this.balances = this.balances.filter((b) => b.id !== id);
   }
 }

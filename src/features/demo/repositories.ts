@@ -10,11 +10,15 @@
  *   query hook → repository → { demo store | real service → Supabase }
  */
 
+import * as balancesService from '@/services/balances';
 import * as budgetsService from '@/services/budgets';
+import * as incomeService from '@/services/income';
 import * as recurringService from '@/services/recurring';
 import * as transactionsService from '@/services/transactions';
 import type { CreateTransactionInput, UpdateTransactionInput } from '@/services/transactions';
 import type { UpsertBudgetInput } from '@/services/budgets';
+import type { CreateIncomeInput, UpdateIncomeInput } from '@/services/income';
+import type { UpsertBalanceInput } from '@/services/balances';
 import type { UpsertRecurringInput } from '@/services/recurring';
 
 import { getDemoStore, isDemoActive } from './demo-runtime';
@@ -55,4 +59,26 @@ export const recurringRepo = {
     isDemoActive() ? getDemoStore().ignoreRecurring(input) : recurringService.ignoreRecurring(input),
   remove: (id: string) =>
     isDemoActive() ? getDemoStore().deleteRecurring(id) : recurringService.deleteRecurring(id),
+};
+
+export const incomeRepo = {
+  fetch: () =>
+    isDemoActive() ? getDemoStore().fetchIncomeSources() : incomeService.fetchIncomeSources(),
+  create: (input: CreateIncomeInput) =>
+    isDemoActive() ? getDemoStore().createIncomeSource(input) : incomeService.createIncomeSource(input),
+  update: (input: UpdateIncomeInput) =>
+    isDemoActive() ? getDemoStore().updateIncomeSource(input) : incomeService.updateIncomeSource(input),
+  remove: (id: string) =>
+    isDemoActive() ? getDemoStore().deleteIncomeSource(id) : incomeService.deleteIncomeSource(id),
+};
+
+export const balancesRepo = {
+  fetch: () =>
+    isDemoActive() ? getDemoStore().fetchBalanceSnapshots() : balancesService.fetchBalanceSnapshots(),
+  upsert: (input: UpsertBalanceInput) =>
+    isDemoActive()
+      ? getDemoStore().upsertBalanceSnapshot(input)
+      : balancesService.upsertBalanceSnapshot(input),
+  remove: (id: string) =>
+    isDemoActive() ? getDemoStore().deleteBalanceSnapshot(id) : balancesService.deleteBalanceSnapshot(id),
 };

@@ -15,6 +15,7 @@
 import { computeNextExpectedDate } from '@/features/recurring/detection';
 import { monthKeyFromDate, monthStartISO } from '@/lib/month';
 import type { Category } from '@/constants/categories';
+import type { BalanceSnapshot, IncomeSource } from '@/types/income';
 import type { RecurringExpense } from '@/types/recurring';
 import type { Budget, Transaction } from '@/types/transaction';
 
@@ -22,10 +23,15 @@ export type DemoDataset = {
   transactions: Transaction[];
   budgets: Budget[];
   recurring: RecurringExpense[];
+  income: IncomeSource[];
+  balances: BalanceSnapshot[];
 };
 
 /** Monthly budget used for the current (and previous) month. */
 export const DEMO_BUDGET_LIMIT = 2500;
+
+/** Explicitly user-declared starting balance for the demo (never inferred). */
+export const DEMO_BALANCE_CENTS = 420000; // $4,200.00
 
 const CURRENCY = 'USD';
 
@@ -49,6 +55,14 @@ type RecentSpec = Omit<MonthSpec, 'day'> & { offsetDays: number };
 function dateInMonth(year: number, monthIndex: number, day: number, hour: number): Date {
   const lastDay = new Date(year, monthIndex + 1, 0).getDate();
   return new Date(year, monthIndex, Math.min(day, lastDay), hour, 0, 0, 0);
+}
+
+/** Local `YYYY-MM-DD` for a date (date-only, no UTC shift). */
+function toDateOnly(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 /** Never let demo data be timestamped after "now". */
@@ -210,8 +224,59 @@ export function generateDemoDataset(referenceDate: Date = new Date()): DemoDatas
   ];
 
   const recurring = buildRecurring(year, month);
+  const income = buildIncome(year, month);
+  const balances = buildBalances(toDateOnly(referenceDate));
 
-  return { transactions, budgets, recurring };
+  return { transactions, budgets, recurring, income, balances };
+}
+
+/**
+ * Sample declared income: a biweekly paycheck plus a smaller monthly freelance
+ * retainer, anchored in the past so occurrences are well established. Deterministic.
+ */
+function buildIncome(year: number, month: number): IncomeSource[] {
+  const paycheckAnchor = toDateOnly(dateInMonth(year, month - 1, 1, 9));
+  const freelanceStart = toDateOnly(dateInMonth(year, month - 2, 20, 9));
+
+  return [
+    {
+      id: 'demo-income-paycheck',
+      name: 'Paycheck',
+      amountCents: 240000, // $2,400.00 every two weeks
+      currency: CURRENCY,
+      schedule: { kind: 'biweekly', anchorDate: paycheckAnchor },
+      startDate: paycheckAnchor,
+      endDate: null,
+      active: true,
+    },
+    {
+      id: 'demo-income-freelance',
+      name: 'Freelance retainer',
+      amountCents: 60000, // $600.00 monthly on the 20th
+      currency: CURRENCY,
+      schedule: { kind: 'monthly', dayOfMonth: 20 },
+      startDate: freelanceStart,
+      endDate: null,
+      active: true,
+    },
+  ];
+}
+
+/**
+ * A single explicitly declared balance snapshot dated TODAY (the reference day).
+ * Dating it on "now" means the forecast engine treats it as a current declared
+ * balance and can anchor an absolute projection — the engine never rolls an older
+ * snapshot forward into a fabricated present balance.
+ */
+function buildBalances(todayISO: string): BalanceSnapshot[] {
+  return [
+    {
+      id: 'demo-balance-current',
+      amountCents: DEMO_BALANCE_CENTS,
+      currency: CURRENCY,
+      effectiveDate: todayISO,
+    },
+  ];
 }
 
 /**
