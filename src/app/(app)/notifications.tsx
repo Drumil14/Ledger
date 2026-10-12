@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Check, ChevronRight } from 'lucide-react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
@@ -9,7 +9,8 @@ import { ModalHeader } from '@/components/modal-header';
 import { Screen } from '@/components/screen';
 import { Text } from '@/components/text';
 import { TextLink } from '@/components/text-link';
-import { colors, spacing } from '@/constants/theme';
+import { Toggle } from '@/components/toggle';
+import { colors, radius, spacing } from '@/constants/theme';
 import { haptics } from '@/lib/haptics';
 import { PermissionSheet } from '@/features/notifications/components/permission-sheet';
 import { useNotifications } from '@/features/notifications/notifications-provider';
@@ -123,10 +124,14 @@ export default function NotificationsSettings() {
 
         {showDeniedNotice ? (
           <View style={styles.notice}>
+            <Text variant="rowTitle">Notifications are turned off</Text>
             <Text variant="metadata" color={colors.textSecondary}>
-              Notifications are turned off in your device settings.
+              Your choices here are saved, but Ledger can’t deliver these reminders until you allow
+              notifications for it in your device settings.
             </Text>
-            <TextLink label="Open Settings" onPress={() => void Linking.openSettings()} />
+            <View style={styles.noticeAction}>
+              <TextLink label="Open Settings" onPress={() => void Linking.openSettings()} />
+            </View>
           </View>
         ) : null}
       </ScrollView>
@@ -190,14 +195,7 @@ function ToggleRow({
           {hint}
         </Text>
       </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: colors.divider, true: colors.primary }}
-        thumbColor={colors.surface}
-        ios_backgroundColor={colors.divider}
-        accessibilityLabel={label}
-      />
+      <Toggle value={value} onValueChange={onValueChange} accessibilityLabel={label} />
     </View>
   );
 }
@@ -235,6 +233,17 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   notice: {
-    gap: spacing.sm,
+    gap: spacing.xs,
+    paddingLeft: spacing.md,
+    paddingVertical: spacing.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.primary,
+    backgroundColor: colors.surfaceAlt,
+    borderTopRightRadius: radius.sm,
+    borderBottomRightRadius: radius.sm,
+    borderCurve: 'continuous',
+  },
+  noticeAction: {
+    marginTop: spacing.xs,
   },
 });

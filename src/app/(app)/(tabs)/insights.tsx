@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
@@ -15,11 +15,13 @@ import { TextLink } from '@/components/text-link';
 import { TransactionRow } from '@/components/transaction-row';
 import { colors, duration, spacing } from '@/constants/theme';
 import { haptics } from '@/lib/haptics';
+import { useAsOf } from '@/lib/use-as-of';
 import { currentMonthKey, monthLabel, previousMonthKey } from '@/lib/month';
 import { CategoryBar } from '@/features/insights/components/category-bar';
 import { CumulativeChart } from '@/features/insights/components/cumulative-chart';
 import { MonthSelector } from '@/features/insights/components/month-selector';
 import { InsightsSkeleton } from '@/features/insights/insights-skeleton';
+import { ForecastSummary } from '@/features/forecast/components/forecast-summary';
 import { RecurringSummary } from '@/features/recurring/components/recurring-summary';
 import { useInsights, type InsightsData } from '@/features/insights/use-insights';
 import type { Transaction } from '@/types/transaction';
@@ -33,8 +35,9 @@ export default function Insights() {
     haptics.light();
     push(`/transaction/${id}`);
   };
-  // A single fixed "now" for the whole screen so month math stays stable.
-  const now = useMemo(() => new Date(), []);
+  // A coherent "now" that advances across midnight / foreground / refocus but
+  // keeps a stable identity within a day, so month math doesn't churn.
+  const now = useAsOf();
   const [monthKey, setMonthKey] = useState(() => currentMonthKey(now));
 
   const { data, isLoading, isError, refetch } = useInsights(monthKey, now);
@@ -98,8 +101,10 @@ export default function Insights() {
           )}
         </Animated.View>
 
-        {/* Recurring is not month-scoped, so it sits outside the keyed block. */}
+        {/* Forward-looking + recurring are not month-scoped, so they sit outside
+            the keyed month block. */}
         <View style={styles.recurring}>
+          <ForecastSummary now={now} onOpen={() => push('/forecast')} />
           <RecurringSummary now={now} onOpen={() => push('/recurring')} />
         </View>
       </ScrollView>
@@ -205,23 +210,31 @@ function FullReport({ data, onOpenTransaction, onSetBudget }: ReportProps) {
         ))}
       </View>
 
-      {/* Worth noticing */}
+      {/* Worth noticing — the lead observation carries weight; the rest read as
+          supporting notes, so they no longer compete for equal attention. */}
       {data.insights.length > 0 ? (
         <>
           <Divider />
           <View style={styles.section}>
             <SectionHeader title="Worth noticing" />
             <View style={styles.insightList}>
-              {data.insights.map((insight, index) => (
-                <Animated.View
-                  key={insight.id}
-                  entering={FadeInDown.duration(duration.base).delay(index * 60)}
-                >
-                  <Text variant="body" style={styles.insight}>
-                    {insight.text}
-                  </Text>
-                </Animated.View>
-              ))}
+              {data.insights.slice(0, 3).map((insight, index) => {
+                const lead = index === 0;
+                return (
+                  <Animated.View
+                    key={insight.id}
+                    entering={FadeInDown.duration(duration.base).delay(index * 60)}
+                  >
+                    <Text
+                      variant={lead ? 'rowTitle' : 'body'}
+                      color={lead ? colors.primary : colors.textSecondary}
+                      style={lead ? styles.insightLead : styles.insight}
+                    >
+                      {insight.text}
+                    </Text>
+                  </Animated.View>
+                );
+              })}
             </View>
           </View>
         </>
@@ -440,6 +453,7 @@ const styles = StyleSheet.create({
   },
   recurring: {
     marginTop: spacing.xxl,
+    gap: spacing.xxl,
   },
   monthEmpty: {
     paddingVertical: spacing.xxl,
@@ -486,7 +500,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   insightList: {
-    gap: spacing.md,
+    gap: spacing.lg,
+  },
+  insightLead: {
+    lineHeight: 26,
   },
   insight: {
     lineHeight: 24,

@@ -18,6 +18,10 @@ type Props = {
  * Compact recurring summary for the Insights screen. Independent of the selected
  * month (recurring spend isn't month-scoped). Renders nothing until there's
  * something to show, so it never disturbs an otherwise-empty report.
+ *
+ * One primary figure (monthly recurring) with its yearly equivalent, then — only
+ * when something actually needs attention — a grouped Review prompt, so the action
+ * reads as part of the candidate note rather than a free-floating control.
  */
 export function RecurringSummary({ now, onOpen }: Props) {
   const { data } = useRecurring(now);
@@ -27,27 +31,30 @@ export function RecurringSummary({ now, onOpen }: Props) {
   const candidateCount = data.candidates.length;
 
   return (
-    <>
+    <View style={styles.block}>
       <Divider />
       <View style={styles.section}>
         <SectionHeader title="Recurring" actionLabel="Manage" onAction={onOpen} />
 
         {hasConfirmed ? (
-          <View style={styles.totalBlock}>
-            <View style={styles.row}>
-              <Text variant="body" color={colors.textSecondary}>
-                Confirmed monthly recurring
-              </Text>
-              <MoneyText amount={data.monthlyTotal} currency={data.currency} />
-            </View>
+          <View style={styles.metric}>
+            <Text variant="eyebrow" color={colors.textSecondary}>
+              MONTHLY RECURRING
+            </Text>
+            <MoneyText
+              amount={data.monthlyTotal}
+              currency={data.currency}
+              variant="display"
+              style={styles.metricNumber}
+            />
             <Text variant="metadata" color={colors.textSecondary}>
-              Estimated yearly {formatMoney(data.annualEstimate, data.currency)}
+              ≈ {formatMoney(data.annualEstimate, data.currency)} a year
             </Text>
           </View>
         ) : null}
 
         {candidateCount > 0 ? (
-          <View style={styles.candidateRow}>
+          <View style={styles.candidate}>
             <Text variant="body" color={colors.textSecondary}>
               {candidateCount === 1
                 ? '1 potential recurring expense detected.'
@@ -57,24 +64,29 @@ export function RecurringSummary({ now, onOpen }: Props) {
           </View>
         ) : null}
       </View>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: spacing.md,
+  block: {
+    gap: 0,
   },
-  totalBlock: {
+  section: {
+    // Generous breathing room between the hairline and the heading.
+    paddingTop: spacing.xxl,
+    gap: spacing.lg,
+  },
+  metric: {
     gap: spacing.xs,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+  metricNumber: {
+    // Matches the "Looking ahead" metric so the two regions share a rhythm.
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: -0.8,
   },
-  candidateRow: {
-    gap: spacing.sm,
+  candidate: {
+    gap: spacing.xs,
   },
 });
