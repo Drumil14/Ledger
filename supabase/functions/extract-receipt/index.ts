@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@^2';
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { AnthropicReceiptProvider } from './provider.ts';
+import { evaluateRateLimit } from './rate-limit.ts';
 import { normalizeCategory } from './schema.ts';
 
 const DAILY_LIMIT = Number(Deno.env.get('RECEIPT_AI_DAILY_LIMIT') ?? '40');
@@ -54,13 +55,17 @@ Deno.serve(async (req) => {
     return json({ error: 'image_too_large' }, 413);
   }
 
-  // Rate limit per user per day (service role bypasses RLS).
+  // Rate limit per user per day (service role bypasses RLS). Fail CLOSED: if the
+  // counter can't be read we refuse rather than fall through to a billable call.
   const admin = createClient(supabaseUrl, serviceKey);
   const { data: usageCount, error: usageErr } = await admin.rpc('increment_receipt_ai_usage', {
     p_user_id: userId,
   });
-  if (!usageErr && typeof usageCount === 'number' && usageCount > DAILY_LIMIT) {
-    return json({ error: 'rate_limited' }, 429);
+  const decision = evaluateRateLimit(usageCount as number | null, Boolean(usageErr), DAILY_LIMIT);
+  if (!decision.allowed) {
+    if (decision.reason === 'limited') return json({ error: 'rate_limited' }, 429);
+    console.error('receipt rate limit unavailable', usageErr);
+    return json({ error: 'rate_limit_unavailable' }, 503);
   }
 
   try {
